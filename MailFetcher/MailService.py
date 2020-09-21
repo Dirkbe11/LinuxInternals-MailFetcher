@@ -1,41 +1,32 @@
-import imaplib
+from imapclient import IMAPClient
+import email
+
+from .MailProducer import MailProducer
 
 import logging
 logger = logging.getLogger(__name__)
 
 class MailService():
-	def __init__(self, server, address, password):
+	def __init__(self, server, address, password, producer_topic, kafka_settings):
 		logger.debug('Initializing Mail Service...')
 		self.server = server
 		self.address = address
 		self.password = password
-
-
-		print(address)
-		print(password)
-
-		self.connection = imaplib.IMAP4_SSL(server)
-		self.connection.login(address, password)
-		self.connection.select('INBOX')
-
-
-
+		self.mail_producer = MailProducer(producer_topic, kafka_settings)
 
 
 	def run(self):
 		logger.debug('Running Mail Service')
-		# while(True):
-		status, response = self.connection.search(None, '(UNSEEN)')
-		unread_msg_nums = response[0].split()
 
-		msg = unread_msg_nums[0]
-		status, data = self.connection.fetch(msg, '(RFC822)')
-		email_msg = data[0][1]
+		with IMAPClient(self.server) as server:
+			server.login(self.address, self.password)
+			server.select_folder('INBOX')
 
+			messages = server.search('UNSEEN')
+			
+			logger.debug("Processing {} messages")
+			print("Message count: {}".format(len(messages)))
 
-
-		print("unread mail count: {}".format(len(unread_msg_nums)))
-
-
-		print("FIRST MESSAGE: \n\n{}".format(email_msg))
-
+			for uid, message_data in server.fetch(messages, 'RFC822').items():
+				email_message = email.message_from_bytes(message_data[b'RFC822'])
+				self.mail_producer.send_mail(uid, email_message)

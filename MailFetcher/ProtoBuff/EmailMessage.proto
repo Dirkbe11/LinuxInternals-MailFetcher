@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package email;
+
+message EmailMessage {
+	int64 uid = 1;
+	string sent_to = 2;
+	string sent_from = 3;
+	string message_body = 4;
+	string message_id = 5;
+	string in_reply_to = 6;
+}
