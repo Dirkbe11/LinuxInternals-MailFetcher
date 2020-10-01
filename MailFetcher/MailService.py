@@ -1,5 +1,6 @@
 from imapclient import IMAPClient
 import email
+import time
 
 from .MailProducer import MailProducer
 
@@ -18,15 +19,22 @@ class MailService():
 	def run(self):
 		logger.debug('Running Mail Service')
 
-		with IMAPClient(self.server) as server:
-			server.login(self.address, self.password)
-			server.select_folder('INBOX')
+		while True:
+			with IMAPClient(self.server) as server:
+				server.login(self.address, self.password)
+				server.select_folder('INBOX')
+				logger.debug('Server has been created and is now in idle mmode...')
 
-			messages = server.search('UNSEEN')
-			
-			logger.debug("Processing {} messages")
-			print("Message count: {}".format(len(messages)))
+				messages = server.search('UNSEEN')
 
-			for uid, message_data in server.fetch(messages, 'RFC822').items():
-				email_message = email.message_from_bytes(message_data[b'RFC822'])
-				self.mail_producer.send_mail(uid, email_message)
+				logger.debug("Processing {} messages")
+				print("Message count: {}".format(len(messages)))
+
+				for uid, message_data in server.fetch(messages, 'RFC822').items():
+					email_message = email.message_from_bytes(message_data[b'RFC822'])
+					self.mail_producer.send_mail(uid, email_message)
+
+
+				time.sleep(30)
+
+
